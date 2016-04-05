@@ -42,7 +42,7 @@ function applyMask(imgMatrix,mask)
     // Initialise temp bigger matrix for treatment
     tempMatrix=zeros(XsizeOfMatrixResult,YsizeOfMatrixResult);
     [Ntemp, Mtemp] = size(tempMatrix)
-    
+
     // Debug: before treatment
     disp(imgMatrix)
     disp(tempMatrix)
@@ -55,14 +55,17 @@ function applyMask(imgMatrix,mask)
     disp(tempMatrix(1,1)) // Should print 0 0
     disp(tempMatrix(halfSizeX+1,halfSizeY+1)) // Should print same as disp(imgMatrix(1,1)) 
 
-    // treatment loop
-    for i = 1+halfSizeX:N-halfSizeX
-        for j = 1+halfSizeY:M-halfSizeY
+    // Treatment loop
+    for i = halfSizeX+1:N-halfSizeX
+        for j = halfSizeY+1:M-halfSizeY
+            x2 = i - halfSizeX - 1;
+            y2 = j - halfSizeY - 1;
             for k = 1:NMask
                 for l = 1:MMask
-
+                    maskPixel = mask(k,l);
+                    imgPixel = imgMatrix(x2 + k, y2 + j);
                 end
             end
-        end
+        end 
     end
 endfunction

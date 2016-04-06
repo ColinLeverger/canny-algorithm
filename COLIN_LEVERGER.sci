@@ -1,3 +1,5 @@
+// FUNCTIONS
+
 // \fn imgMatrix
 // \brief Create matrix from image
 function imgMatrix = loadImage(path,isRGB)
@@ -25,8 +27,11 @@ endfunction
 // \args imgMatrix: image to treat, mask: mask to use
 // \return matrixResult: image which has been treated
 function matrixResult = applyMask(imgMatrix,mask)
-    // Normalize the mask
-    mask = (1/sum(mask)).*mask;
+    // Normalize the mask if the sum of all the components of the mask
+    // is different of 0
+    if (sum(mask) ~= 0) then
+        mask = (1/sum(mask)).*mask;
+    end
     // Get size of the matrix
     [N, M] = size(imgMatrix); 
     // Get size of the mask 
@@ -81,6 +86,74 @@ function matrixResult = applyMask(imgMatrix,mask)
     end
 endfunction
 
-// Debug
+function [Es,Eo] = gradiantNorm(imgMatrix)
+    // Get size of the matrix
+    [N, M] = size(imgMatrix);
+
+    // Init the masks for convolution
+    mask1 = [1,0,-1];
+    mask2 = [1;0;-1];
+
+    // Apply masks...
+    Jx = applyMask(imgMatrix,mask1);
+    Jy = applyMask(imgMatrix,mask2);
+
+    for i = 1 : N
+        for j = 1 : M
+            Es(i,j) = sqrt(Jx(i,j)^2 + Jy(i,j)^2);
+            Eo(i,j) = normalizeAngle(atan(-Jx(i,j) / Jy(i,j)));
+        end
+    end
+    disp(Es);
+    disp(Eo);
+endfunction
+
+// \fn normalizeAngle
+// \brief Normalize angle of the norm of the gradient
+// \args angle
+// \return normalizedAngle
+function normalizedAngle = normalizeAngle(angle)
+    if (angle >= -22.5) & (angle <= 22.5) then
+        normalizedAngle = 0;
+    elseif (angle >= 22.5) & (angle <= 67.5) then
+        normalizedAngle = 45;
+    elseif (angle >= 67.5) & (angle <= 112.5) then
+        normalizedAngle = 90;
+    elseif (angle <= 112.5) & (angle >= 157.5) then
+        normalizedAngle = 135;
+    end,
+endfunction
+
+// TESTS
+
+// \fn testApplyMask
+// \brief Test the function "applyMask"
+// \args imgMatrix: image to treat, mask: mask to use
+// \return resTest: result of the test
+function resTest = testApplyMask(imgMatrix,mask)
+    // Init result matrix to compare output of my function to the official one
+    matrixResult = applyMask(imgMatrix,mask);
+    // Init test matrix
+    matrixTest = imfilter(imgMatrix,mask);
+    // Should be full of 0...
+    // But it is not -> FIXME
+    resTest = matrixResult - matrixTest;
+endfunction
+
+// MAIN
+function lenna2 = main
+    // Load image
+    lenna = loadImage('X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\lenna.jpeg',1);
+    //displayImage(lenna);
+    // Init mask
+    mask = [1,2,1;2,4,2;1,2,1];
+    // Apply the mask, step 1: gaussian filter
+    lenna2 = applyMask(lenna,mask);
+    displayImage(lenna2);
+    //displayImage(lenna);
+    gradiantNorm(lenna2);
+endfunction
+
+// DEBUG
 //m=[4,1,2,9,8;3,3,1,3,7;4,7,6,5,2;4,8,3,7,1;3,7,7,9,3]
 //mask=[1,2,1;2,4,2;1,2,1]

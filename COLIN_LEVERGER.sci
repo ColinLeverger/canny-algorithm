@@ -86,6 +86,9 @@ function matrixResult = applyMask(imgMatrix,mask)
     end
 endfunction
 
+// \fn gradiantNorm
+// \brief Apply the gradiants to picture
+// \args imgMatrix: image to treat
 function [Es,Eo] = gradiantNorm(imgMatrix)
     // Get size of the matrix
     [N, M] = size(imgMatrix);
@@ -101,11 +104,70 @@ function [Es,Eo] = gradiantNorm(imgMatrix)
     for i = 1 : N
         for j = 1 : M
             Es(i,j) = sqrt(Jx(i,j)^2 + Jy(i,j)^2);
-            Eo(i,j) = normalizeAngle(atan(-Jx(i,j) / Jy(i,j)));
+            //Eo(i,j) = normalizeAngle(atan(-Jx(i,j),Jy(i,j))*180/%pi);
+            Eo(i,j) = normalizeAngle(atan(-Jx(i,j),Jy(i,j))*180/%pi);
         end
     end
-    disp(Es);
-    disp(Eo);
+endfunction
+
+// \fn deleteNonMax
+// \brief Delete the non maximum in the Es matrix (using Eo)
+// \args Es: matrix to treat, Eo: matrix to use to follow gradiant norm
+function imgWithoutMax = deleteNonMax(Es,Eo)
+    [N,M] = size(Es);
+
+    for i = 1 : N
+        for j = 1 : M
+            // Save the actual angle of the gradiant
+            gradiantAngle = Eo(i,j);
+            // Save the actual value
+            actualValue = Es(i,j);
+            // Switch/case on the gradiant angle to check...
+            select gradiantAngle
+                case 0 then
+                    xTemp1 = i - 1;
+                    yTemp1 = j;
+                    xTemp2 = i + 1;
+                    yTemp2 = j;
+                case 45 then
+                    xTemp1 = i - 1;
+                    yTemp1 = j + 1;
+                    xTemp2 = i + 1;
+                    yTemp2 = j - 1;
+                case 90 then
+                    xTemp1 = i;
+                    yTemp1 = j - 1;
+                    xTemp2 = i;
+                    yTemp2 = j + 1;
+                case 135 then
+                    xTemp1 = i - 1;
+                    yTemp1 = j - 1;
+                    xTemp2 = i + 1;
+                    yTemp2 = j + 1;
+                else
+                    break;
+            end
+
+            // Check if the pixels we want to compare exists in Eo
+            if (xTemp1 > 0) & (xTemp1 < N + 1) & (yTemp1 > 0) & (yTemp1 < M + 1) then
+                firstValueToCompare = Es(xTemp1,yTemp1);
+            else
+                firstValueToCompare = 0
+            end
+            if (xTemp2 > 0) & (xTemp2 < N + 1) & (yTemp2 > 0) & (yTemp2 < M + 1) then
+                secondValueToCompare = Es(xTemp2,yTemp2);
+            else
+                secondValueToCompare = 0
+            end
+
+            // And then, delete the non maximums
+            if (actualValue < firstValueToCompare) | (actualValue < secondValueToCompare) then
+                imgWithoutMax(i,j) = 0;
+            else
+                imgWithoutMax(i,j) = actualValue
+            end
+        end
+    end 
 endfunction
 
 // \fn normalizeAngle
@@ -119,9 +181,13 @@ function normalizedAngle = normalizeAngle(angle)
         normalizedAngle = 45;
     elseif (angle >= 67.5) & (angle <= 112.5) then
         normalizedAngle = 90;
-    elseif (angle <= 112.5) & (angle >= 157.5) then
+    elseif (angle >= 112.5) & (angle <= 157.5) then
         normalizedAngle = 135;
-    end,
+    elseif (angle >= 157.5) then
+        normalizedAngle = normalizeAngle(angle - 180);
+    elseif (angle <= -22.5) then
+        normalizedAngle = normalizeAngle(angle + 180);
+    end
 endfunction
 
 // TESTS
@@ -141,7 +207,7 @@ function resTest = testApplyMask(imgMatrix,mask)
 endfunction
 
 // MAIN
-function lenna2 = main
+function imgWithoutMax = main()
     // Load image
     lenna = loadImage('X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\lenna.jpeg',1);
     //displayImage(lenna);
@@ -151,9 +217,11 @@ function lenna2 = main
     lenna2 = applyMask(lenna,mask);
     displayImage(lenna2);
     //displayImage(lenna);
-    gradiantNorm(lenna2);
+    [Es,Eo] = gradiantNorm(lenna2);
+    imgWithoutMax = deleteNonMax(Es,Eo)
 endfunction
 
 // DEBUG
 //m=[4,1,2,9,8;3,3,1,3,7;4,7,6,5,2;4,8,3,7,1;3,7,7,9,3]
 //mask=[1,2,1;2,4,2;1,2,1]
+//[A,B]=gradiantNorm(lenna2);

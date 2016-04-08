@@ -142,8 +142,14 @@ endfunction
 // \fn hysteresisThresold
 // \brief Apply the hysteresis thresold on the image 
 // \args img: img to treat, Eo: gradiant angle matrix associated to img
-function thresoldedImage2 = hysteresisThresold(img,Eo)
-    p = perctl(img,95); // FIXME -> comment
+
+// QUESTION
+// Utiliser Es ou img pour le perctl ?
+//
+function thresoldedImage2 = hysteresisThresold(img,Eo,Es)
+    // 95% of the pixels in the image are below p value
+    // perctl is used to compute Th automatically
+    p = perctl(Es,95);
     Th = (p(1));
     Tl = Th / 2;
 
@@ -269,8 +275,10 @@ endfunction
 // MAIN
 
 function main()
+    // For big pictures, increase size of stack
+    stacksize('max')
     // Load image
-    lenna = loadImage('X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\lenna.jpeg',1);
+    lenna = loadImage('X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\lenna_big.jpg',1);
     // Init mask
     mask = [1,2,1;2,4,2;1,2,1];
     // Apply the mask, step 1: gaussian filter
@@ -280,7 +288,7 @@ function main()
     // Remove max from img
     imgWithoutMax = deleteNonMax(Es,Eo);
     // Apply hysteresisThresold
-    thresoldedImage = hysteresisThresold(imgWithoutMax,Eo);
+    thresoldedImage = hysteresisThresold(imgWithoutMax,Eo,Es);
 
     // Display result of main
     resultImage = concateneImg(lenna,lenna2,imgWithoutMax,thresoldedImage);

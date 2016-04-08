@@ -110,6 +110,42 @@ function [Es,Eo] = gradiantNorm(imgMatrix)
     end
 endfunction
 
+function [xTemp1,yTemp1,xTemp2,yTemp2] = getNeighborhood(gradiantAngle)
+    select gradiantAngle
+        case 0 then
+            xTemp1 = i - 1;
+            yTemp1 = j;
+            xTemp2 = i + 1;
+            yTemp2 = j;
+        case 45 then
+            xTemp1 = i - 1;
+            yTemp1 = j + 1;
+            xTemp2 = i + 1;
+            yTemp2 = j - 1;
+        case 90 then
+            xTemp1 = i;
+            yTemp1 = j - 1;
+            xTemp2 = i;
+            yTemp2 = j + 1;
+        case 135 then
+            xTemp1 = i - 1;
+            yTemp1 = j - 1;
+            xTemp2 = i + 1;
+            yTemp2 = j + 1;
+        else
+            break;
+    end
+endfunction
+
+// FIXME -> a inclure et a tester
+function value = getMatValueIfExists(x,y,mat,N,M)
+    if (x > 0) & (x < N + 1) & (y > 0) & (y < M + 1) then
+        value = mat(x,y);
+    else
+        value = 0
+    end
+endfunction
+
 // \fn deleteNonMax
 // \brief Delete the non maximum in the Es matrix (using Eo)
 // \args Es: matrix to treat, Eo: matrix to use to follow gradiant norm
@@ -123,51 +159,69 @@ function imgWithoutMax = deleteNonMax(Es,Eo)
             // Save the actual value
             actualValue = Es(i,j);
             // Switch/case on the gradiant angle to check...
-            select gradiantAngle
-                case 0 then
-                    xTemp1 = i - 1;
-                    yTemp1 = j;
-                    xTemp2 = i + 1;
-                    yTemp2 = j;
-                case 45 then
-                    xTemp1 = i - 1;
-                    yTemp1 = j + 1;
-                    xTemp2 = i + 1;
-                    yTemp2 = j - 1;
-                case 90 then
-                    xTemp1 = i;
-                    yTemp1 = j - 1;
-                    xTemp2 = i;
-                    yTemp2 = j + 1;
-                case 135 then
-                    xTemp1 = i - 1;
-                    yTemp1 = j - 1;
-                    xTemp2 = i + 1;
-                    yTemp2 = j + 1;
-                else
-                    break;
-            end
+            [xTemp1,yTemp1,xTemp2,yTemp2] = getNeighborhood(gradiantAngle);
 
             // Check if the pixels we want to compare exists in Eo
-            if (xTemp1 > 0) & (xTemp1 < N + 1) & (yTemp1 > 0) & (yTemp1 < M + 1) then
-                firstValueToCompare = Es(xTemp1,yTemp1);
-            else
-                firstValueToCompare = 0
-            end
-            if (xTemp2 > 0) & (xTemp2 < N + 1) & (yTemp2 > 0) & (yTemp2 < M + 1) then
-                secondValueToCompare = Es(xTemp2,yTemp2);
-            else
-                secondValueToCompare = 0
-            end
+            firstValueToCompare = getMatValueIfExists(xTemp1,yTemp1,Es,N,M);
+            secondValueToCompare = getMatValueIfExists(xTemp2,yTemp2,Es,N,M);
+            // if (xTemp1 > 0) & (xTemp1 < N + 1) & (yTemp1 > 0) & (yTemp1 < M + 1) then
+            //     firstValueToCompare = Es(xTemp1,yTemp1);
+            // else
+            //     firstValueToCompare = 0
+            // end
+            // if (xTemp2 > 0) & (xTemp2 < N + 1) & (yTemp2 > 0) & (yTemp2 < M + 1) then
+            //     secondValueToCompare = Es(xTemp2,yTemp2);
+            // else
+            //     secondValueToCompare = 0
+            // end
 
             // And then, delete the non maximums
             if (actualValue < firstValueToCompare) | (actualValue < secondValueToCompare) then
                 imgWithoutMax(i,j) = 0;
             else
-                imgWithoutMax(i,j) = actualValue
+                imgWithoutMax(i,j) = actualValue;
             end
         end
     end 
+endfunction
+
+function thresoldedImage = hysteresisThresold(img,Eo)
+    p=perctl(img,95); // FIXME -> comment
+    Th=(p(1));
+    Tl = Th / 2;
+    [N,M] = size(img);
+    // First iteration
+    for i = 1 : N
+        for j = 1 : M
+            // Three cases:  img(i,j) > Th, img(i,j) < Tl, Th > img(i,j) > Tl
+            if img(i,j) > Th then
+                thresoldedImage(i,j) = 255;
+            elseif img(i,j) < Tl then
+                thresoldedImage(i,j) = 0;
+            end          
+        end
+    end
+
+    for i = 1 : N
+        for j = 1 : M
+            // Three cases:  img(i,j) > Th, img(i,j) < Tl, Th > img(i,j) > Tl
+            gradPerp = normalizeAngle(Eo(i,j) + 90);
+            [xTemp1,yTemp1,xTemp2,yTemp2] = getNeighborhood(gradPerp);
+
+            // Check if the pixels we want to compare exists in Eo
+            firstValueToCompare = getMatValueIfExists(xTemp1,yTemp1,thresoldedImage,N,M);
+            secondValueToCompare = getMatValueIfExists(xTemp2,yTemp2,thresoldedImage,N,M);
+
+            // Check the neighbor pixel to see if there is an edge
+            if firstValueToCompare == 255 | secondValueToCompare == 255 then
+                thresoldedImage(j,j) = 255;
+            else
+                thresoldedImage(j,j) = 0;
+            end       
+        end
+    end 
+
+
 endfunction
 
 // \fn normalizeAngle
@@ -190,6 +244,12 @@ function normalizedAngle = normalizeAngle(angle)
     end
 endfunction
 
+// \fn concateneImg
+// \brief concatene four images to display them in only one window
+function y = concateneImg(img1,img2,img3,img4)
+    y=cat(2,img1,img2,img3,img4)
+endfunction
+
 // TESTS
 
 // \fn testApplyMask
@@ -207,19 +267,26 @@ function resTest = testApplyMask(imgMatrix,mask)
 endfunction
 
 // MAIN
-function imgWithoutMax = main()
+function main()
     // Load image
     lenna = loadImage('X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\lenna.jpeg',1);
-    //displayImage(lenna);
     // Init mask
     mask = [1,2,1;2,4,2;1,2,1];
     // Apply the mask, step 1: gaussian filter
     lenna2 = applyMask(lenna,mask);
-    displayImage(lenna2);
-    //displayImage(lenna);
+    // Compute the gradiant norm 
     [Es,Eo] = gradiantNorm(lenna2);
-    imgWithoutMax = deleteNonMax(Es,Eo)
+    // Remove max from img
+    imgWithoutMax = deleteNonMax(Es,Eo);
+    // Apply hysteresisThresold
+    thresoldedImage = hysteresisThresold(imgWithoutMax,Eo);
+
+    // Display result of main
+    resultImage = concateneImg(lenna,lenna2,imgWithoutMax,thresoldedImage);
+    displayImage(resultImage);
 endfunction
+
+main()
 
 // DEBUG
 //m=[4,1,2,9,8;3,3,1,3,7;4,7,6,5,2;4,8,3,7,1;3,7,7,9,3]

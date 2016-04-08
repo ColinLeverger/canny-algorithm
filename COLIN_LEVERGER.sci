@@ -110,42 +110,6 @@ function [Es,Eo] = gradiantNorm(imgMatrix)
     end
 endfunction
 
-function [xTemp1,yTemp1,xTemp2,yTemp2] = getNeighborhood(gradiantAngle)
-    select gradiantAngle
-        case 0 then
-            xTemp1 = i - 1;
-            yTemp1 = j;
-            xTemp2 = i + 1;
-            yTemp2 = j;
-        case 45 then
-            xTemp1 = i - 1;
-            yTemp1 = j + 1;
-            xTemp2 = i + 1;
-            yTemp2 = j - 1;
-        case 90 then
-            xTemp1 = i;
-            yTemp1 = j - 1;
-            xTemp2 = i;
-            yTemp2 = j + 1;
-        case 135 then
-            xTemp1 = i - 1;
-            yTemp1 = j - 1;
-            xTemp2 = i + 1;
-            yTemp2 = j + 1;
-        else
-            break;
-    end
-endfunction
-
-// FIXME -> a inclure et a tester
-function value = getMatValueIfExists(x,y,mat,N,M)
-    if (x > 0) & (x < N + 1) & (y > 0) & (y < M + 1) then
-        value = mat(x,y);
-    else
-        value = 0
-    end
-endfunction
-
 // \fn deleteNonMax
 // \brief Delete the non maximum in the Es matrix (using Eo)
 // \args Es: matrix to treat, Eo: matrix to use to follow gradiant norm
@@ -158,22 +122,12 @@ function imgWithoutMax = deleteNonMax(Es,Eo)
             gradiantAngle = Eo(i,j);
             // Save the actual value
             actualValue = Es(i,j);
-            // Switch/case on the gradiant angle to check...
-            [xTemp1,yTemp1,xTemp2,yTemp2] = getNeighborhood(gradiantAngle);
+            // Get the coord of the neighbors
+            [xTemp1,yTemp1,xTemp2,yTemp2] = getNeighborhoodCoords(gradiantAngle);
 
             // Check if the pixels we want to compare exists in Eo
             firstValueToCompare = getMatValueIfExists(xTemp1,yTemp1,Es,N,M);
             secondValueToCompare = getMatValueIfExists(xTemp2,yTemp2,Es,N,M);
-            // if (xTemp1 > 0) & (xTemp1 < N + 1) & (yTemp1 > 0) & (yTemp1 < M + 1) then
-            //     firstValueToCompare = Es(xTemp1,yTemp1);
-            // else
-            //     firstValueToCompare = 0
-            // end
-            // if (xTemp2 > 0) & (xTemp2 < N + 1) & (yTemp2 > 0) & (yTemp2 < M + 1) then
-            //     secondValueToCompare = Es(xTemp2,yTemp2);
-            // else
-            //     secondValueToCompare = 0
-            // end
 
             // And then, delete the non maximums
             if (actualValue < firstValueToCompare) | (actualValue < secondValueToCompare) then
@@ -185,11 +139,16 @@ function imgWithoutMax = deleteNonMax(Es,Eo)
     end 
 endfunction
 
-function thresoldedImage = hysteresisThresold(img,Eo)
-    p=perctl(img,95); // FIXME -> comment
-    Th=(p(1));
+// \fn hysteresisThresold
+// \brief Apply the hysteresis thresold on the image 
+// \args img: img to treat, Eo: gradiant angle matrix associated to img
+function thresoldedImage2 = hysteresisThresold(img,Eo)
+    p = perctl(img,95); // FIXME -> comment
+    Th = (p(1));
     Tl = Th / 2;
+
     [N,M] = size(img);
+
     // First iteration
     for i = 1 : N
         for j = 1 : M
@@ -202,26 +161,25 @@ function thresoldedImage = hysteresisThresold(img,Eo)
         end
     end
 
+    // Second iteration
     for i = 1 : N
         for j = 1 : M
             // Three cases:  img(i,j) > Th, img(i,j) < Tl, Th > img(i,j) > Tl
             gradPerp = normalizeAngle(Eo(i,j) + 90);
-            [xTemp1,yTemp1,xTemp2,yTemp2] = getNeighborhood(gradPerp);
+            [xTemp1,yTemp1,xTemp2,yTemp2] = getNeighborhoodCoords(gradPerp);
 
             // Check if the pixels we want to compare exists in Eo
             firstValueToCompare = getMatValueIfExists(xTemp1,yTemp1,thresoldedImage,N,M);
             secondValueToCompare = getMatValueIfExists(xTemp2,yTemp2,thresoldedImage,N,M);
 
             // Check the neighbor pixel to see if there is an edge
-            if firstValueToCompare == 255 | secondValueToCompare == 255 then
-                thresoldedImage(j,j) = 255;
+            if (firstValueToCompare == 255) | (secondValueToCompare == 255) then
+                thresoldedImage2(i,j) = 255;
             else
-                thresoldedImage(j,j) = 0;
+                thresoldedImage2(i,j) = 0;
             end       
         end
-    end 
-
-
+    end
 endfunction
 
 // \fn normalizeAngle
@@ -250,6 +208,48 @@ function y = concateneImg(img1,img2,img3,img4)
     y=cat(2,img1,img2,img3,img4)
 endfunction
 
+// \fn getNeighborhoodCoords
+// \brief Get the coords of the two neighbours of the pixel, following the gradiant angle
+// \args gradiantAngle: angle in deg
+function [xTemp1,yTemp1,xTemp2,yTemp2] = getNeighborhoodCoords(gradiantAngle)
+    select gradiantAngle
+        case 0 then
+            xTemp1 = i - 1;
+            yTemp1 = j;
+            xTemp2 = i + 1;
+            yTemp2 = j;
+        case 45 then
+            xTemp1 = i - 1;
+            yTemp1 = j + 1;
+            xTemp2 = i + 1;
+            yTemp2 = j - 1;
+        case 90 then
+            xTemp1 = i;
+            yTemp1 = j - 1;
+            xTemp2 = i;
+            yTemp2 = j + 1;
+        case 135 then
+            xTemp1 = i - 1;
+            yTemp1 = j - 1;
+            xTemp2 = i + 1;
+            yTemp2 = j + 1;
+        else
+            break;
+    end
+endfunction
+
+// \fn getMatValueIfExists
+// \brief Get a value by index, if index is in range
+// \args x: coordX to test, y: coordY to test, mat: matrice where we want to extract value,
+//       N: size X of matrix, Y: size Y of matrix
+function value = getMatValueIfExists(x,y,mat,N,M)
+    if (x > 0) & (x < N + 1) & (y > 0) & (y < M + 1) then
+        value = mat(x,y);
+    else
+        value = 0
+    end
+endfunction
+
 // TESTS
 
 // \fn testApplyMask
@@ -267,6 +267,7 @@ function resTest = testApplyMask(imgMatrix,mask)
 endfunction
 
 // MAIN
+
 function main()
     // Load image
     lenna = loadImage('X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\lenna.jpeg',1);

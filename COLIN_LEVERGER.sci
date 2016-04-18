@@ -27,31 +27,30 @@ endfunction
 // \args imgMatrix: image to treat, mask: mask to use
 // \return matrixResult: image which has been treated
 function matrixResult = applyMask(imgMatrix,mask)
-    // Normalize the mask if the sum of all the components of the mask
-    // is different of 0
+    // Normalize the mask if the sum of all the components of the mask is different of 0
     if (sum(mask) ~= 0) then
-        mask = (1/sum(mask)).*mask;
+        mask = (1 / sum(mask)).*mask;
     end
     // Get size of the matrix
     [N, M] = size(imgMatrix); 
     // Get size of the mask 
     [NMask, MMask] = size(mask);
-    // Get the halfSize of the mask provided to avoid problems in the edges of the pic
-    halfSizeX = floor(NMask/2);      
-    halfSizeY = floor(MMask/2);
+    // Get the halfSize of the mask to avoid problems in the edges of the picture
+    halfSizeX = floor(NMask / 2);      
+    halfSizeY = floor(MMask / 2);
 
-    XsizeOfTempMatrix = N+2*halfSizeX;
-    YsizeOfTempMatrix = M+2*halfSizeY;
+    XsizeOfTempMatrix = N + 2 * halfSizeX;
+    YsizeOfTempMatrix = M + 2 * halfSizeY;
 
     // Initialise temp bigger matrix for treatment
-    tempMatrix=zeros(XsizeOfTempMatrix,YsizeOfTempMatrix);
+    tempMatrix = zeros(XsizeOfTempMatrix,YsizeOfTempMatrix);
     [Ntemp, Mtemp] = size(tempMatrix);
 
     // Debug: before treatment
     //disp(imgMatrix);
     //disp(tempMatrix);
 
-    tempMatrix(halfSizeX+1:Ntemp-halfSizeX,halfSizeY+1:Mtemp-halfSizeY) = imgMatrix;
+    tempMatrix(halfSizeX + 1 : Ntemp - halfSizeX,halfSizeY + 1 : Mtemp - halfSizeY) = imgMatrix;
 
     // Debug
     //disp(tempMatrix);
@@ -60,7 +59,7 @@ function matrixResult = applyMask(imgMatrix,mask)
     //disp(tempMatrix(halfSizeX+1,halfSizeY+1)); // Should print same as disp(imgMatrix(1,1)) 
 
     // Init matrixResult
-    matrixResult=zeros(N,M)
+    matrixResult = zeros(N,M)
 
     // Treatment loop
     for i = halfSizeX + 1 : N + halfSizeX
@@ -89,6 +88,7 @@ endfunction
 // \fn gradiantNorm
 // \brief Apply the gradiants to picture
 // \args imgMatrix: image to treat
+// \return Es: gradiants, Eo: gradiant angle
 function [Es,Eo] = gradiantNorm(imgMatrix)
     // Get size of the matrix
     [N, M] = size(imgMatrix);
@@ -101,6 +101,7 @@ function [Es,Eo] = gradiantNorm(imgMatrix)
     Jx = applyMask(imgMatrix,mask1);
     Jy = applyMask(imgMatrix,mask2);
 
+    // Apply the given mathematical formulas to create Es and Eo
     for i = 1 : N
         for j = 1 : M
             Es(i,j) = sqrt(Jx(i,j)^2 + Jy(i,j)^2);
@@ -113,6 +114,7 @@ endfunction
 // \fn deleteNonMax
 // \brief Delete the non maximum in the Es matrix (using Eo)
 // \args Es: matrix to treat, Eo: matrix to use to follow gradiant norm
+// \return imgWithoutMax
 function imgWithoutMax = deleteNonMax(Es,Eo)
     [N,M] = size(Es);
 
@@ -142,14 +144,13 @@ endfunction
 // \fn hysteresisThresold
 // \brief Apply the hysteresis thresold on the image 
 // \args img: img to treat, Eo: gradiant angle matrix associated to img
-
-// QUESTION
+// \
+// QUESTION: 
 // Utiliser Es ou img pour le perctl ?
-//
 function thresoldedImage2 = hysteresisThresold(img,Eo,Es)
     // 95% of the pixels in the image are below p value
     // perctl is used to compute Th automatically
-    p = perctl(Es,95);
+    p = perctl(Es,85);
     Th = (p(1));
     Tl = Th / 2;
 
@@ -193,23 +194,25 @@ endfunction
 // \args angle
 // \return normalizedAngle
 function normalizedAngle = normalizeAngle(angle)
-    if (angle >= -22.5) & (angle <= 22.5) then
-        normalizedAngle = 0;
-    elseif (angle >= 22.5) & (angle <= 67.5) then
-        normalizedAngle = 45;
-    elseif (angle >= 67.5) & (angle <= 112.5) then
-        normalizedAngle = 90;
-    elseif (angle >= 112.5) & (angle <= 157.5) then
-        normalizedAngle = 135;
-    elseif (angle >= 157.5) then
+    if (angle >= 157.5) then
         normalizedAngle = normalizeAngle(angle - 180);
-    elseif (angle <= -22.5) then
-        normalizedAngle = normalizeAngle(angle + 180);
+    elseif (angle < -22.5) then
+        normalizedAngle = normalizeAngle(angle + 180);    
+    elseif (angle >= 22.5) & (angle < 67.5) then
+        normalizedAngle = 45;
+    elseif (angle >= 67.5) & (angle < 112.5) then
+        normalizedAngle = 90;
+    elseif (angle >= 112.5) & (angle < 157.5) then
+        normalizedAngle = 135;
+    elseif (angle >= -22.5) & (angle < 22.5) then
+        normalizedAngle = 0;
     end
-endfunction
+endfunction 
 
 // \fn concateneImg
 // \brief concatene four images to display them in only one window
+// \args four img to concat
+// \return y: cat of all the 4 img provided
 function y = concateneImg(img1,img2,img3,img4)
     y=cat(2,img1,img2,img3,img4)
 endfunction
@@ -217,6 +220,7 @@ endfunction
 // \fn getNeighborhoodCoords
 // \brief Get the coords of the two neighbours of the pixel, following the gradiant angle
 // \args gradiantAngle: angle in deg
+// \return xTemp1,yTemp1,xTemp2,yTemp2: coordinates
 function [xTemp1,yTemp1,xTemp2,yTemp2] = getNeighborhoodCoords(gradiantAngle)
     select gradiantAngle
         case 0 then
@@ -248,6 +252,7 @@ endfunction
 // \brief Get a value by index, if index is in range
 // \args x: coordX to test, y: coordY to test, mat: matrice where we want to extract value,
 //       N: size X of matrix, Y: size Y of matrix
+// \return value: value in the matrix, if it exists
 function value = getMatValueIfExists(x,y,mat,N,M)
     if (x > 0) & (x < N + 1) & (y > 0) & (y < M + 1) then
         value = mat(x,y);
@@ -266,33 +271,39 @@ function resTest = testApplyMask(imgMatrix,mask)
     // Init result matrix to compare output of my function to the official one
     matrixResult = applyMask(imgMatrix,mask);
     // Init test matrix
-    matrixTest = imfilter(imgMatrix,mask);
-    // Should be full of 0...
-    // But it is not -> FIXME
+    // NOTE : we should send to imfilter a normalized mask !
+    normalizedMask = (1 / sum(mask)).*mask;
+    matrixTest = imfilter(imgMatrix,normalizedMask);
+    // Should be full of 0
+    // with border efects because imfilter is not using the same 
     resTest = matrixResult - matrixTest;
+    disp(resTest);
 endfunction
 
 // MAIN
 
 function main()
     // For big pictures, increase size of stack
-    stacksize('max')
+    stacksize('max');
     // Load image
     lenna = loadImage('X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\lenna_big.jpg',1);
     // Init mask
-    mask = [1,2,1;2,4,2;1,2,1];
+    //mask = [1,2,1;2,4,2;1,2,1];
+    mask = [2,4,5,4,2;4,9,12,9,4;5,12,15,12,5;4,9,12,9,4;2,4,5,4,2];
     // Apply the mask, step 1: gaussian filter
     lenna2 = applyMask(lenna,mask);
-    // Compute the gradiant norm 
-    [Es,Eo] = gradiantNorm(lenna2);
-    // Remove max from img
-    imgWithoutMax = deleteNonMax(Es,Eo);
-    // Apply hysteresisThresold
-    thresoldedImage = hysteresisThresold(imgWithoutMax,Eo,Es);
+    testApplyMask(lenna,mask);
 
-    // Display result of main
-    resultImage = concateneImg(lenna,lenna2,imgWithoutMax,thresoldedImage);
-    displayImage(resultImage);
+    // Compute the gradiant norm 
+    // [Es,Eo] = gradiantNorm(lenna2);
+    // // Remove max from img
+    // imgWithoutMax = deleteNonMax(Es,Eo);
+    // // Apply hysteresisThresold
+    // thresoldedImage = hysteresisThresold(imgWithoutMax,Eo,Es);
+
+    // // Display result of main
+    // resultImage = concateneImg(lenna,lenna2,imgWithoutMax,thresoldedImage);
+    // displayImage(resultImage);
 endfunction
 
 main()

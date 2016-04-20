@@ -1,5 +1,7 @@
 // FUNCTIONS
 
+// Dont show warnings
+funcprot(0)
 // \fn imgMatrix
 // \brief Create matrix from image
 function imgMatrix = loadImage(path,isRGB)
@@ -141,52 +143,107 @@ function imgWithoutMax = deleteNonMax(Es,Eo)
     end 
 endfunction
 
+// \fn computeThresold
+// \brief Compute the thresold automatically (mimic of perctl)
+// \args img: img to use to compute thresold
+function t = computeThresold(img, perc, histSize)
+    // Size of image
+    [N,M] = size(img);
+  
+    // Normalise matrix to delete floating numbers...
+    for i = 1 : N
+        for j = 1 : M
+            normalizedMatrix(i,j) = floor(img(i,j));
+        end
+    end
+
+    // Compute the steps
+    valueMax = max(normalizedMatrix);
+    valueMin = min(normalizedMatrix);
+    step = (valueMax - valueMin) / histSize;
+
+    // Note : histSize is the number of value we want to put on our histogram
+    histogramIndexes = zeros(1, histSize + 1);
+    histogram = zeros(1, histSize + 1);
+
+    for i = 2 : size(histogramIndexes,2)
+        histogramIndexes(i) = ((step * i) - step);
+    end
+
+    for i = 1 : N
+        for j = 1 : M
+            actVal = normalizedMatrix(i,j);
+            index = floor((actVal - valueMin) / step) + 1;
+            
+            histogram(index) = histogram(index) + 1;
+        end
+    end
+
+    // Normalisation of histogram
+    normalizedHistogram = histogram / sum(histogram);
+
+    // // Debug
+    // disp(histogramIndexes);
+    // disp(normalizedHistogram);
+
+    // // Histogram
+    subplot(121);
+    plot(histogramIndexes,normalizedHistogram);
+
+    // Repartition
+    repartition = cumsum(normalizedHistogram);
+    subplot(122);
+    plot(repartition);
+    // TEMP --> fixme delete
+    t = 0
+endfunction
+
 // \fn hysteresisThresold
 // \brief Apply the hysteresis thresold on the image 
 // \args img: img to treat, Eo: gradiant angle matrix associated to img
-// \
-// QUESTION: 
-// Utiliser Es ou img pour le perctl ?
 function thresoldedImage2 = hysteresisThresold(img,Eo,Es)
     // 95% of the pixels in the image are below p value
     // perctl is used to compute Th automatically
-    p = perctl(Es,85);
-    Th = (p(1));
-    Tl = Th / 2;
+    //p = perctl(Es,70);
+    p = computeThresold(Es,70,100);
+
+    //Th = (p(1));
+    // Th = p;
+    // Tl = Th / 2;
 
     [N,M] = size(img);
+    thresoldedImage2 = zeros(N,M);
+    // // First iteration
+    // for i = 1 : N
+    //     for j = 1 : M
+    //         // Three cases:  img(i,j) > Th, img(i,j) < Tl, Th > img(i,j) > Tl
+    //         if img(i,j) > Th then
+    //             thresoldedImage(i,j) = 255;
+    //         elseif img(i,j) < Tl then
+    //             thresoldedImage(i,j) = 0;
+    //         end          
+    //     end
+    // end
 
-    // First iteration
-    for i = 1 : N
-        for j = 1 : M
-            // Three cases:  img(i,j) > Th, img(i,j) < Tl, Th > img(i,j) > Tl
-            if img(i,j) > Th then
-                thresoldedImage(i,j) = 255;
-            elseif img(i,j) < Tl then
-                thresoldedImage(i,j) = 0;
-            end          
-        end
-    end
+    // // Second iteration
+    // for i = 1 : N
+    //     for j = 1 : M
+    //         // Three cases:  img(i,j) > Th, img(i,j) < Tl, Th > img(i,j) > Tl
+    //         gradPerp = normalizeAngle(Eo(i,j) + 90);
+    //         [xTemp1,yTemp1,xTemp2,yTemp2] = getNeighborhoodCoords(gradPerp);
 
-    // Second iteration
-    for i = 1 : N
-        for j = 1 : M
-            // Three cases:  img(i,j) > Th, img(i,j) < Tl, Th > img(i,j) > Tl
-            gradPerp = normalizeAngle(Eo(i,j) + 90);
-            [xTemp1,yTemp1,xTemp2,yTemp2] = getNeighborhoodCoords(gradPerp);
+    //         // Check if the pixels we want to compare exists in Eo
+    //         firstValueToCompare = getMatValueIfExists(xTemp1,yTemp1,thresoldedImage,N,M);
+    //         secondValueToCompare = getMatValueIfExists(xTemp2,yTemp2,thresoldedImage,N,M);
 
-            // Check if the pixels we want to compare exists in Eo
-            firstValueToCompare = getMatValueIfExists(xTemp1,yTemp1,thresoldedImage,N,M);
-            secondValueToCompare = getMatValueIfExists(xTemp2,yTemp2,thresoldedImage,N,M);
-
-            // Check the neighbor pixel to see if there is an edge
-            if (firstValueToCompare == 255) | (secondValueToCompare == 255) then
-                thresoldedImage2(i,j) = 255;
-            else
-                thresoldedImage2(i,j) = 0;
-            end       
-        end
-    end
+    //         // Check the neighbor pixel to see if there is an edge
+    //         if (firstValueToCompare == 255) | (secondValueToCompare == 255) then
+    //             thresoldedImage2(i,j) = 255;
+    //         else
+    //             thresoldedImage2(i,j) = 0;
+    //         end       
+    //     end
+    // end
 endfunction
 
 // \fn normalizeAngle
@@ -285,25 +342,31 @@ endfunction
 function main()
     // For big pictures, increase size of stack
     stacksize('max');
+
     // Load image
-    lenna = loadImage('X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\lenna_big.jpg',1);
+    img = loadImage('X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\small.jpg',0);
     // Init mask
     //mask = [1,2,1;2,4,2;1,2,1];
     mask = [2,4,5,4,2;4,9,12,9,4;5,12,15,12,5;4,9,12,9,4;2,4,5,4,2];
     // Apply the mask, step 1: gaussian filter
-    lenna2 = applyMask(lenna,mask);
-    testApplyMask(lenna,mask);
+    filteredImg = applyMask(img,mask);
+    // Test
+    //testApplyMask(img,mask);
 
-    // Compute the gradiant norm 
-    // [Es,Eo] = gradiantNorm(lenna2);
-    // // Remove max from img
-    // imgWithoutMax = deleteNonMax(Es,Eo);
-    // // Apply hysteresisThresold
-    // thresoldedImage = hysteresisThresold(imgWithoutMax,Eo,Es);
+    //Compute the gradiant norm 
+    [Es,Eo] = gradiantNorm(filteredImg);
+    // Remove max from img
+    imgWithoutMax = deleteNonMax(Es,Eo);
+    // Apply hysteresisThresold
+    thresoldedImage = hysteresisThresold(imgWithoutMax,Eo,Es);
 
     // // Display result of main
-    // resultImage = concateneImg(lenna,lenna2,imgWithoutMax,thresoldedImage);
+    // resultImage = concateneImg(img,filteredImg,imgWithoutMax,thresoldedImage);
     // displayImage(resultImage);
+    // // Write result
+    // writeImage(uint8(imgWithoutMax),'X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\img3-without-max_70.jpg')
+    // writeImage(uint8(filteredImg),'X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\img3-filtered_70.jpg')
+    // writeImage(uint8(thresoldedImage),'X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\img3-res_70.jpg')
 endfunction
 
 main()

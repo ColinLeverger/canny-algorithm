@@ -89,11 +89,11 @@ function matrixResult = applyMask(imgMatrix,mask)
     end
 endfunction
 
-// \fn gradiantNorm
+// \fn gradientNorm
 // \brief Apply the gradiants to picture
 // \args imgMatrix: image to treat
 // \return Es: gradiants, Eo: gradiant angle
-function [Es,Eo] = gradiantNorm(imgMatrix)
+function [Es,Eo] = gradientNorm(imgMatrix)
     // Get size of the matrix
     [N, M] = size(imgMatrix);
 
@@ -373,7 +373,7 @@ function main()
     testApplyMask(img,mask);
 
     // Compute the gradiant norm 
-    [Es,Eo] = gradiantNorm(filteredImg);
+    [Es,Eo] = gradientNorm(filteredImg);
     // Remove max from img
     imgWithoutMax = deleteNonMax(Es,Eo);
     // Apply hysteresisThreshold

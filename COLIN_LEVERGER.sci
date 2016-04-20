@@ -1,9 +1,11 @@
 // FUNCTIONS
 
-// Dont show warnings
+// Don't show warnings
 funcprot(0)
+
 // \fn imgMatrix
 // \brief Create matrix from image
+// \return imgMatrix: image loaded
 function imgMatrix = loadImage(path,isRGB)
     if isRGB == 0 then
         imgMatrix = double(imread(path));
@@ -20,7 +22,7 @@ endfunction
 
 // \fn writeImage
 // \brief Write an image from its matrix
-function image = writeImage(imgMatrix,fileName)
+function writeImage(imgMatrix,fileName)
     image = imwrite(imgMatrix,fileName);
 endfunction
 
@@ -49,16 +51,16 @@ function matrixResult = applyMask(imgMatrix,mask)
     [Ntemp, Mtemp] = size(tempMatrix);
 
     // Debug: before treatment
-    //disp(imgMatrix);
-    //disp(tempMatrix);
+    // disp(imgMatrix);
+    // disp(tempMatrix);
 
     tempMatrix(halfSizeX + 1 : Ntemp - halfSizeX,halfSizeY + 1 : Mtemp - halfSizeY) = imgMatrix;
 
     // Debug
-    //disp(tempMatrix);
-    //disp(imgMatrix(1,1));
-    //disp(tempMatrix(1,1)); // Should print 0 0
-    //disp(tempMatrix(halfSizeX+1,halfSizeY+1)); // Should print same as disp(imgMatrix(1,1)) 
+    // disp(tempMatrix);
+    // disp(imgMatrix(1,1));
+    // disp(tempMatrix(1,1)); // Should print 0 0
+    // disp(tempMatrix(halfSizeX+1,halfSizeY+1)); // Should print same as disp(imgMatrix(1,1)) 
 
     // Init matrixResult
     matrixResult = zeros(N,M)
@@ -76,10 +78,10 @@ function matrixResult = applyMask(imgMatrix,mask)
                     // Get the value of the image we need to convoluate
                     imgPixel = tempMatrix(x2 + xMask, y2 + yMask);
                     // Debug
-                    //disp(maskPixel)
-                    //disp(imgPixel)
+                    // disp(maskPixel);
+                    // disp(imgPixel);
                     // Store result of partial convolution on an array
-                    around(xMask,yMask) = maskPixel * imgPixel
+                    around(xMask,yMask) = maskPixel * imgPixel;
                 end
             end
             matrixResult(i - halfSizeX,j - halfSizeY) = sum(around);
@@ -99,7 +101,7 @@ function [Es,Eo] = gradiantNorm(imgMatrix)
     mask1 = [1,0,-1];
     mask2 = [1;0;-1];
 
-    // Apply masks...
+    // Apply masks
     Jx = applyMask(imgMatrix,mask1);
     Jy = applyMask(imgMatrix,mask2);
 
@@ -143,12 +145,16 @@ function imgWithoutMax = deleteNonMax(Es,Eo)
     end 
 endfunction
 
-// \fn computeThresold
-// \brief Compute the thresold automatically (mimic of perctl)
-// \args img: img to use to compute thresold
-function t = computeThresold(img, perc, histSize)
+// \fn computeThreshold
+// \brief Compute the threshold automatically (mimic of perctl)
+// \args img: img to use to compute threshold, perc: percentage we will use to
+//       create threshold, histSize: size of histogramIndexes we will need
+// \return Th: high threshold, Tl: low threshold
+function [Th,Tl] = computeThreshold(img, perc, histSize)
     // Size of image
     [N,M] = size(img);
+    // Normalize percentage
+    perc = perc / 100;
   
     // Normalise matrix to delete floating numbers...
     for i = 1 : N
@@ -157,12 +163,12 @@ function t = computeThresold(img, perc, histSize)
         end
     end
 
-    // Compute the steps
+    // Calculate the steps
     valueMax = max(normalizedMatrix);
     valueMin = min(normalizedMatrix);
     step = (valueMax - valueMin) / histSize;
 
-    // Note : histSize is the number of value we want to put on our histogram
+    // histSize is the number of value we want to put on our histogram
     histogramIndexes = zeros(1, histSize + 1);
     histogram = zeros(1, histSize + 1);
 
@@ -182,11 +188,11 @@ function t = computeThresold(img, perc, histSize)
     // Normalisation of histogram
     normalizedHistogram = histogram / sum(histogram);
 
-    // // Debug
+    // Debug
     // disp(histogramIndexes);
     // disp(normalizedHistogram);
 
-    // // Histogram
+    // Histogram
     subplot(121);
     plot(histogramIndexes,normalizedHistogram);
 
@@ -194,56 +200,67 @@ function t = computeThresold(img, perc, histSize)
     repartition = cumsum(normalizedHistogram);
     subplot(122);
     plot(repartition);
-    // TEMP --> fixme delete
-    t = 0
+
+    indexOfPercentile = 1;
+    while repartition(indexOfPercentile) < perc
+        indexOfPercentile = indexOfPercentile + 1;
+    end
+
+    // Debug
+    // disp(histogramIndexes(indexOfPercentile));
+
+    Th = histogramIndexes(indexOfPercentile);
+    Tl = Th / 2;
 endfunction
 
-// \fn hysteresisThresold
-// \brief Apply the hysteresis thresold on the image 
-// \args img: img to treat, Eo: gradiant angle matrix associated to img
-function thresoldedImage2 = hysteresisThresold(img,Eo,Es)
-    // 95% of the pixels in the image are below p value
+// \fn hysteresisThreshold
+// \brief Apply the hysteresis threshold on the image 
+// \args img: img to treat, Eo: gradiant angle matrix associated to img,
+//       perc: percentage we will use to compute the threshold Th
+function thresholdedImage = hysteresisThreshold(img,Eo,Es,perc)
+    // Debug
+    // 70% of the pixels in the image are below p value
     // perctl is used to compute Th automatically
-    //p = perctl(Es,70);
-    p = computeThresold(Es,70,100);
+    // p = perctl(Es,70);
+    // Th = (p(1));
 
-    //Th = (p(1));
-    // Th = p;
-    // Tl = Th / 2;
-
+    [Th,Tl] = computeThreshold(Es,perc,100);
     [N,M] = size(img);
-    thresoldedImage2 = zeros(N,M);
-    // // First iteration
-    // for i = 1 : N
-    //     for j = 1 : M
-    //         // Three cases:  img(i,j) > Th, img(i,j) < Tl, Th > img(i,j) > Tl
-    //         if img(i,j) > Th then
-    //             thresoldedImage(i,j) = 255;
-    //         elseif img(i,j) < Tl then
-    //             thresoldedImage(i,j) = 0;
-    //         end          
-    //     end
-    // end
 
-    // // Second iteration
-    // for i = 1 : N
-    //     for j = 1 : M
-    //         // Three cases:  img(i,j) > Th, img(i,j) < Tl, Th > img(i,j) > Tl
-    //         gradPerp = normalizeAngle(Eo(i,j) + 90);
-    //         [xTemp1,yTemp1,xTemp2,yTemp2] = getNeighborhoodCoords(gradPerp);
+    // Init matrices for treatment
+    tempThresholdedImage = zeros(N,M);
+    thresholdedImage = zeros(N,M);
 
-    //         // Check if the pixels we want to compare exists in Eo
-    //         firstValueToCompare = getMatValueIfExists(xTemp1,yTemp1,thresoldedImage,N,M);
-    //         secondValueToCompare = getMatValueIfExists(xTemp2,yTemp2,thresoldedImage,N,M);
+    // First iteration
+    for i = 1 : N
+        for j = 1 : M
+            // Three cases:  img(i,j) > Th, img(i,j) < Tl, Th > img(i,j) > Tl
+            if img(i,j) > Th then
+                tempThresholdedImage(i,j) = 255;
+            elseif img(i,j) < Tl then
+                tempThresholdedImage(i,j) = 0;
+            end          
+        end
+    end
 
-    //         // Check the neighbor pixel to see if there is an edge
-    //         if (firstValueToCompare == 255) | (secondValueToCompare == 255) then
-    //             thresoldedImage2(i,j) = 255;
-    //         else
-    //             thresoldedImage2(i,j) = 0;
-    //         end       
-    //     end
-    // end
+    // Second iteration
+    for i = 1 : N
+        for j = 1 : M
+            gradPerp = normalizeAngle(Eo(i,j) + 90);
+            [xTemp1,yTemp1,xTemp2,yTemp2] = getNeighborhoodCoords(gradPerp);
+
+            // Check if the pixels we want to compare exists in Eo
+            firstValueToCompare = getMatValueIfExists(xTemp1,yTemp1,tempThresholdedImage,N,M);
+            secondValueToCompare = getMatValueIfExists(xTemp2,yTemp2,tempThresholdedImage,N,M);
+
+            // Check the neighbor pixel to see if there is an edge
+            if (firstValueToCompare == 255) | (secondValueToCompare == 255) then
+                thresholdedImage(i,j) = 255;
+            else
+                thresholdedImage(i,j) = 0;
+            end       
+        end
+    end
 endfunction
 
 // \fn normalizeAngle
@@ -271,7 +288,7 @@ endfunction
 // \args four img to concat
 // \return y: cat of all the 4 img provided
 function y = concateneImg(img1,img2,img3,img4)
-    y=cat(2,img1,img2,img3,img4)
+    y = cat(2,img1,img2,img3,img4);
 endfunction
 
 // \fn getNeighborhoodCoords
@@ -308,13 +325,13 @@ endfunction
 // \fn getMatValueIfExists
 // \brief Get a value by index, if index is in range
 // \args x: coordX to test, y: coordY to test, mat: matrice where we want to extract value,
-//       N: size X of matrix, Y: size Y of matrix
+//       N: size X of matrix, M: size Y of matrix
 // \return value: value in the matrix, if it exists
 function value = getMatValueIfExists(x,y,mat,N,M)
     if (x > 0) & (x < N + 1) & (y > 0) & (y < M + 1) then
         value = mat(x,y);
     else
-        value = 0
+        value = 0;
     end
 endfunction
 
@@ -325,16 +342,18 @@ endfunction
 // \args imgMatrix: image to treat, mask: mask to use
 // \return resTest: result of the test
 function resTest = testApplyMask(imgMatrix,mask)
+    // We should give to imfilter a normalized mask !
+    normalizedMask = (1 / sum(mask)).*mask;
+
     // Init result matrix to compare output of my function to the official one
     matrixResult = applyMask(imgMatrix,mask);
     // Init test matrix
-    // NOTE : we should send to imfilter a normalized mask !
-    normalizedMask = (1 / sum(mask)).*mask;
     matrixTest = imfilter(imgMatrix,normalizedMask);
-    // Should be full of 0
-    // with border efects because imfilter is not using the same 
+    
+    // With border efects because imfilter works differently concerning the edges
     resTest = matrixResult - matrixTest;
-    disp(resTest);
+    // Debug: should be full of 0
+    // disp(resTest)
 endfunction
 
 // MAIN
@@ -344,34 +363,28 @@ function main()
     stacksize('max');
 
     // Load image
-    img = loadImage('X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\small.jpg',0);
+    img = loadImage('X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\img3.jpg',1);
     // Init mask
-    //mask = [1,2,1;2,4,2;1,2,1];
+    // mask = [1,2,1;2,4,2;1,2,1];
     mask = [2,4,5,4,2;4,9,12,9,4;5,12,15,12,5;4,9,12,9,4;2,4,5,4,2];
     // Apply the mask, step 1: gaussian filter
     filteredImg = applyMask(img,mask);
     // Test
-    //testApplyMask(img,mask);
+    testApplyMask(img,mask);
 
-    //Compute the gradiant norm 
+    // Compute the gradiant norm 
     [Es,Eo] = gradiantNorm(filteredImg);
     // Remove max from img
     imgWithoutMax = deleteNonMax(Es,Eo);
-    // Apply hysteresisThresold
-    thresoldedImage = hysteresisThresold(imgWithoutMax,Eo,Es);
+    // Apply hysteresisThreshold
+    thresholdedImage = hysteresisThreshold(imgWithoutMax,Eo,Es,86);
 
-    // // Display result of main
-    // resultImage = concateneImg(img,filteredImg,imgWithoutMax,thresoldedImage);
-    // displayImage(resultImage);
-    // // Write result
-    // writeImage(uint8(imgWithoutMax),'X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\img3-without-max_70.jpg')
-    // writeImage(uint8(filteredImg),'X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\img3-filtered_70.jpg')
-    // writeImage(uint8(thresoldedImage),'X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\img3-res_70.jpg')
+    // Display result of main
+    resultImage = concateneImg(img,filteredImg,imgWithoutMax,thresholdedImage);
+    displayImage(resultImage);
+
+    // Write result
+    writeImage(uint8(resultImage),'X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\img3_res_86.jpg');
 endfunction
 
 main()
-
-// DEBUG
-//m=[4,1,2,9,8;3,3,1,3,7;4,7,6,5,2;4,8,3,7,1;3,7,7,9,3]
-//mask=[1,2,1;2,4,2;1,2,1]
-//[A,B]=gradiantNorm(lenna2);

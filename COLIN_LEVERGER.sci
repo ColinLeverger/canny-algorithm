@@ -75,12 +75,12 @@ function matrixResult = applyMask(imgMatrix,mask)
                 for yMask = 1 : MMask
                     // Get the pixel of the mask we are using 
                     maskPixel = mask(xMask,yMask);
-                    // Get the value of the image we need to convoluate
+                    // Get the value of the image we need to convolute
                     imgPixel = tempMatrix(x2 + xMask, y2 + yMask);
                     // Debug
                     // disp(maskPixel);
                     // disp(imgPixel);
-                    // Store result of partial convolution on an array
+                    // Store result of partial convolutions on an array
                     around(xMask,yMask) = maskPixel * imgPixel;
                 end
             end
@@ -90,9 +90,9 @@ function matrixResult = applyMask(imgMatrix,mask)
 endfunction
 
 // \fn gradientNorm
-// \brief Apply the gradiants to picture
+// \brief Apply the gradients to picture
 // \args imgMatrix: image to treat
-// \return Es: gradiants, Eo: gradiant angle
+// \return Es: gradients, Eo: gradient angle
 function [Es,Eo] = gradientNorm(imgMatrix)
     // Get size of the matrix
     [N, M] = size(imgMatrix);
@@ -116,20 +116,20 @@ function [Es,Eo] = gradientNorm(imgMatrix)
 endfunction
 
 // \fn deleteNonMax
-// \brief Delete the non maximum in the Es matrix (using Eo)
-// \args Es: matrix to treat, Eo: matrix to use to follow gradiant norm
+// \brief Delete the non-maximum in the Es matrix (using Eo)
+// \args Es: matrix to treat, Eo: matrix to use to follow gradient norm
 // \return imgWithoutMax
 function imgWithoutMax = deleteNonMax(Es,Eo)
     [N,M] = size(Es);
 
     for i = 1 : N
         for j = 1 : M
-            // Save the actual angle of the gradiant
-            gradiantAngle = Eo(i,j);
+            // Save the actual angle of the gradient
+            gradientAngle = Eo(i,j);
             // Save the actual value
             actualValue = Es(i,j);
             // Get the coord of the neighbors
-            [xTemp1,yTemp1,xTemp2,yTemp2] = getNeighborhoodCoords(gradiantAngle);
+            [xTemp1,yTemp1,xTemp2,yTemp2] = getNeighborhoodCoords(gradientAngle);
 
             // Check if the pixels we want to compare exists in Eo
             firstValueToCompare = getMatValueIfExists(xTemp1,yTemp1,Es,N,M);
@@ -215,7 +215,7 @@ endfunction
 
 // \fn hysteresisThreshold
 // \brief Apply the hysteresis threshold on the image 
-// \args img: img to treat, Eo: gradiant angle matrix associated to img,
+// \args img: img to treat, Eo: gradient angle matrix associated to img,
 //       perc: percentage we will use to compute the threshold Th
 function thresholdedImage = hysteresisThreshold(img,Eo,Es,perc)
     // Debug
@@ -292,11 +292,11 @@ function y = concateneImg(img1,img2,img3,img4)
 endfunction
 
 // \fn getNeighborhoodCoords
-// \brief Get the coords of the two neighbours of the pixel, following the gradiant angle
-// \args gradiantAngle: angle in deg
+// \brief Get the coords of the two neighbours of the pixel, following the gradient angle
+// \args gradientAngle: angle in deg
 // \return xTemp1,yTemp1,xTemp2,yTemp2: coordinates
-function [xTemp1,yTemp1,xTemp2,yTemp2] = getNeighborhoodCoords(gradiantAngle)
-    select gradiantAngle
+function [xTemp1,yTemp1,xTemp2,yTemp2] = getNeighborhoodCoords(gradientAngle)
+    select gradientAngle
         case 0 then
             xTemp1 = i - 1;
             yTemp1 = j;
@@ -363,7 +363,7 @@ function main()
     stacksize('max');
 
     // Load image
-    img = loadImage('X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\img3.jpg',1);
+    img = loadImage('X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\img1.jpg',1);
     // Init mask
     // mask = [1,2,1;2,4,2;1,2,1];
     mask = [2,4,5,4,2;4,9,12,9,4;5,12,15,12,5;4,9,12,9,4;2,4,5,4,2];
@@ -372,7 +372,7 @@ function main()
     // Test
     testApplyMask(img,mask);
 
-    // Compute the gradiant norm 
+    // Compute the gradient norm 
     [Es,Eo] = gradientNorm(filteredImg);
     // Remove max from img
     imgWithoutMax = deleteNonMax(Es,Eo);
@@ -384,7 +384,7 @@ function main()
     displayImage(resultImage);
 
     // Write result
-    writeImage(uint8(resultImage),'X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\img3_res_86.jpg');
+    //writeImage(uint8(resultImage),'X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\img3_res_86.jpg');
 endfunction
 
 main()

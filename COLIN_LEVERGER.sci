@@ -31,6 +31,7 @@ endfunction
 // \args imgMatrix: image to treat, mask: mask to use
 // \return matrixResult: image which has been treated
 function matrixResult = applyMask(imgMatrix,mask)
+    disp("applyMask");
     // Normalize the mask if the sum of all the components of the mask is different of 0
     if (sum(mask) ~= 0) then
         mask = (1 / sum(mask)).*mask;
@@ -94,6 +95,7 @@ endfunction
 // \args imgMatrix: image to treat
 // \return Es: gradients, Eo: gradient angle
 function [Es,Eo] = gradientNorm(imgMatrix)
+    disp("gradientNorm");
     // Get size of the matrix
     [N, M] = size(imgMatrix);
 
@@ -120,6 +122,7 @@ endfunction
 // \args Es: matrix to treat, Eo: matrix to use to follow gradient norm
 // \return imgWithoutMax
 function imgWithoutMax = deleteNonMax(Es,Eo)
+    disp("deleteNonMax");
     [N,M] = size(Es);
 
     for i = 1 : N
@@ -151,6 +154,7 @@ endfunction
 //       create threshold, histSize: size of histogramIndexes we will need
 // \return Th: high threshold, Tl: low threshold
 function [Th,Tl] = computeThreshold(img, perc, histSize)
+    disp("computeThreshold");
     // Size of image
     [N,M] = size(img);
     // Normalize percentage
@@ -218,6 +222,7 @@ endfunction
 // \args img: img to treat, Eo: gradient angle matrix associated to img,
 //       perc: percentage we will use to compute the threshold Th
 function thresholdedImage = hysteresisThreshold(img,Eo,Es,perc)
+    disp("hysteresisThreshold");
     // Debug
     // 70% of the pixels in the image are below p value
     // perctl is used to compute Th automatically
@@ -359,32 +364,34 @@ endfunction
 // MAIN
 
 function main()
+    disp("Start main");
     // For big pictures, increase size of stack
     stacksize('max');
 
     // Load image
-    img = loadImage('X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\img1.jpg',1);
+    img = loadImage('./img3.jpg',1);
     // Init mask
     // mask = [1,2,1;2,4,2;1,2,1];
     mask = [2,4,5,4,2;4,9,12,9,4;5,12,15,12,5;4,9,12,9,4;2,4,5,4,2];
     // Apply the mask, step 1: gaussian filter
     filteredImg = applyMask(img,mask);
     // Test
-    testApplyMask(img,mask);
+    // testApplyMask(img,mask);
 
     // Compute the gradient norm 
     [Es,Eo] = gradientNorm(filteredImg);
     // Remove max from img
     imgWithoutMax = deleteNonMax(Es,Eo);
     // Apply hysteresisThreshold
-    thresholdedImage = hysteresisThreshold(imgWithoutMax,Eo,Es,86);
+    thresholdedImage = hysteresisThreshold(imgWithoutMax,Eo,Es,95);
 
     // Display result of main
     resultImage = concateneImg(img,filteredImg,imgWithoutMax,thresholdedImage);
-    displayImage(resultImage);
+    displayImage(filteredImg);
 
     // Write result
-    //writeImage(uint8(resultImage),'X:\ENSSAT\IMR2\S4\TRAITEMENT_IMAGE\PROJET\img3_res_86.jpg');
+    writeImage(uint8(resultImage),'./tests/img3_res_95.jpg');
+    disp("End main");
 endfunction
 
 main()

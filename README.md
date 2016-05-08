@@ -21,11 +21,12 @@ Note that the hysteresis threshold can be changed: for a good value, pick someth
 
 ## Warning
 
-- Possible issues if you use Scilab x64 (Scilab x32 preferred)
+- Possible issues if you use Scilab x64 (Scilab x32 preferred).
 - Don't forget to increase the stack size! `stack size('max');`
 
 ## How to use this code?
 
 - Clone project.
-- Run script
+- Run script.
 - Done!
+- Tests & results of previous executions provided in "./tests" folder.

@@ -28,5 +28,8 @@ Note that the hysteresis threshold can be changed: for a good value, pick someth
 
 - Clone project.
 - Run script.
+    + `img = loadImage('./img3.jpg',1);` l.372: Choose image to load.
+    + `mask = [2,4,5,4,2;4,9,12,9,4;5,12,15,12,5;4,9,12,9,4;2,4,5,4,2];` l.375: init your mask.
+    + `writeImage(uint8(resultImage),'./tests/img3_res_95.jpg');` l.395: write result of execution on disk.
 - Done!
 - Tests & results of previous executions provided in "./tests" folder.

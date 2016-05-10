@@ -33,3 +33,10 @@ Note that the hysteresis threshold can be changed: for a good value, pick someth
     + `writeImage(uint8(resultImage),'./tests/img3_res_95.jpg');` l.395: write result of execution on disk.
 - Done!
 - Tests & results of previous executions provided in "./tests" folder.
+
+## Results & execution
+
+Results of several execution can be found in "./tests" folder.
+
+![Result for image1, thresold 86%](./tests/img1_res_86.jpg)
+

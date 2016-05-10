@@ -34,7 +34,7 @@ Note that the hysteresis threshold can be changed: for a good value, pick someth
 - Done!
 - Tests & results of previous executions provided in "./tests" folder.
 
-## Results & execution
+## Results & samples
 
 Results of several execution can be found in "./tests" folder.
 
